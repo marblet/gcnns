@@ -15,7 +15,13 @@ class GCN(nn.Module):
         self.gc2 = GCNConv(nhid, nclass)
         self.dropout = dropout
 
-    def forward(self, x, adj):
+    def reset_parameters(self):
+        self.gc1.reset_parameters()
+        self.gc2.reset_parameters()
+
+    def forward(self, data):
+        x = data.features
+        adj = data.adj
         x = F.relu(self.gc1(x, adj))
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.gc2(x, adj)
@@ -39,9 +45,7 @@ class GCNConv(Module):
         if self.bias is not None:
             self.bias.data.fill_(0)
 
-    def forward(self, data):
-        x = data.features
-        adj = data.adj
+    def forward(self, x, adj):
         x = torch.matmul(x, self.weight)
         x = torch.spmm(adj, x)
         if self.bias is not None:
