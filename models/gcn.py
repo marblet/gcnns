@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import optim
 from torch.nn.modules.module import Module
 from torch.nn.parameter import Parameter
 
@@ -38,10 +39,18 @@ class GCNConv(Module):
         if self.bias is not None:
             self.bias.data.fill_(0)
 
-    def forward(self, x, adj):
+    def forward(self, data):
+        x = data.features
+        adj = data.adj
         x = torch.matmul(x, self.weight)
         x = torch.spmm(adj, x)
         if self.bias is not None:
             return x + self.bias
         else:
             return x
+
+
+def create_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
+    model = GCN(data.num_features, nhid, data.num_classes, dropout)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    return model, optimizer
