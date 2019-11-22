@@ -13,6 +13,8 @@ class Data(object):
         self.train_mask = train_mask
         self.val_mask = val_mask
         self.test_mask = test_mask
+        self.num_features = features.size(1)
+        self.num_classes = int(torch.max(labels)) + 1
 
     def to(self, device):
         return self.apply(lambda x: x.to(device))
@@ -70,7 +72,7 @@ def adj_mat_from_dict(graph):
     G = nx.from_dict_of_lists(graph)
     coo_adj = nx.to_scipy_sparse_matrix(G).tocoo()
     indices = torch.from_numpy(np.vstack((coo_adj.row, coo_adj.col)).astype(np.int64))
-    values = torch.from_numpy(coo_adj.data)
+    values = torch.from_numpy(coo_adj.data).float()
     shape = torch.Size(coo_adj.shape)
     return torch.sparse.FloatTensor(indices, values, shape)
 
@@ -86,5 +88,3 @@ def parse_index_file(filename):
     for line in open(filename):
         index.append(int(line.strip()))
     return index
-
-
