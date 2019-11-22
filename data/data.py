@@ -22,7 +22,7 @@ def load_data(dataset_str):
     names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'graph']
     objects = []
     for name in names:
-        with open("data/ind.{}.{}".format(dataset_str, name), 'rb') as f:
+        with open("data/planetoid/ind.{}.{}".format(dataset_str, name), 'rb') as f:
             if sys.version_info > (3, 0):
                 out = pkl.load(f, encoding='latin1')
             else:
@@ -35,7 +35,7 @@ def load_data(dataset_str):
                 objects.append(torch.Tensor(out))
 
     x, y, tx, ty, allx, ally, graph = tuple(objects)
-    test_idx = parse_index_file("data/ind.{}.test.index".format(dataset_str))
+    test_idx = parse_index_file("data/planetoid/ind.{}.test.index".format(dataset_str))
     train_idx = torch.arange(y.size(0), dtype=torch.long)
     val_idx = torch.arange(y.size(0), y.size(0) + 500, dtype=torch.long)
     sorted_test_idx = np.sort(test_idx)
