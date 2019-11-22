@@ -17,7 +17,12 @@ class Data(object):
         self.num_classes = int(torch.max(labels)) + 1
 
     def to(self, device):
-        return self.apply(lambda x: x.to(device))
+        self.adj = self.adj.to(device)
+        self.features = self.features.to(device)
+        self.labels = self.labels.to(device)
+        self.train_mask = self.train_mask.to(device)
+        self.val_mask = self.val_mask.to(device)
+        self.test_mask = self.test_mask.to(device)
 
 
 def load_data(dataset_str):
