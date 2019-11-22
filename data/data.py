@@ -4,10 +4,13 @@ import pickle as pkl
 import sys
 import torch
 
+from utils import add_self_loops, normalize_adj
+
 
 class Data(object):
-    def __init__(self, adj, features, labels, train_mask, val_mask, test_mask):
+    def __init__(self, adj, edge_list, features, labels, train_mask, val_mask, test_mask):
         self.adj = adj
+        self.edge_list = edge_list
         self.features = features
         self.labels = labels
         self.train_mask = train_mask
@@ -62,24 +65,24 @@ def load_data(dataset_str):
     labels = torch.cat([ally, ty], dim=0).max(dim=1)[1]
     labels[test_idx] = labels[sorted_test_idx]
 
-    adj = adj_mat_from_dict(graph)
+    edge_list = adj_list_from_dict(graph)
+    edge_list = add_self_loops(edge_list, features.size(0))
+    adj = normalize_adj(edge_list)
 
     train_mask = index_to_mask(train_idx, labels.shape[0])
     val_mask = index_to_mask(val_idx, labels.shape[0])
     test_mask = index_to_mask(test_idx, labels.shape[0])
 
-    data = Data(adj, features, labels, train_mask, val_mask, test_mask)
+    data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
 
     return data
 
 
-def adj_mat_from_dict(graph):
+def adj_list_from_dict(graph):
     G = nx.from_dict_of_lists(graph)
     coo_adj = nx.to_scipy_sparse_matrix(G).tocoo()
     indices = torch.from_numpy(np.vstack((coo_adj.row, coo_adj.col)).astype(np.int64))
-    values = torch.from_numpy(coo_adj.data).float()
-    shape = torch.Size(coo_adj.shape)
-    return torch.sparse.FloatTensor(indices, values, shape)
+    return indices
 
 
 def index_to_mask(index, size):
