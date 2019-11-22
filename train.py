@@ -10,7 +10,7 @@ def train(model, optimizer, data):
     model.train()
     optimizer.zero_grad()
     output = model(data)
-    loss = F.nll_loss(output[data.train_mask == 1], data.y[data.train_mask == 1])
+    loss = F.nll_loss(output[data.train_mask], data.labels[data.train_mask])
     loss.backward()
     optimizer.step()
 
@@ -23,10 +23,12 @@ def evaluate(model, data):
 
     outputs = {}
     for key in ['train', 'val', 'test']:
-        mask = data['{}_mask'.format(key)]
-        loss = F.nll_loss(output[mask == 1], data.y[mask == 1]).item()
-        pred = output[mask == 1].max(dim=1)[1]
-        acc = pred.eq(data.y[mask == 1]).sum().item() / mask.sum().item()
+        if key == 'train': mask = data.train_mask
+        elif key == 'val': mask = data.val_mask
+        else: mask = data.test_mask
+        loss = F.nll_loss(output[mask], data.labels[mask]).item()
+        pred = output[mask].max(dim=1)[1]
+        acc = pred.eq(data.labels[mask]).sum().item() / mask.sum().item()
 
         outputs['{}_loss'.format(key)] = loss
         outputs['{}_acc'.format(key)] = acc
@@ -36,8 +38,7 @@ def evaluate(model, data):
 
 def run(data, model, optimizer, epochs=200, iter=100, early_stopping=True, patience=10, verbose=False):
     # for GPU
-    data = data.to(device)
-    model.to(device).reset_parameters()
+    # data = data.to(device)
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
@@ -47,6 +48,7 @@ def run(data, model, optimizer, epochs=200, iter=100, early_stopping=True, patie
 
     for _ in tqdm(range(iter)):
         # for early stopping
+        model.to(device).reset_parameters()
         best_val_loss = float('inf')
         counter = 0
         for epoch in range(1, epochs+1):
