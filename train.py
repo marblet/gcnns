@@ -36,7 +36,7 @@ def evaluate(model, data):
     return outputs
 
 
-def run(data, model, optimizer, epochs=200, iter=100, early_stopping=True, patience=10, verbose=False):
+def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, patience=10, verbose=False):
     # for GPU
     data.to(device)
 
@@ -46,7 +46,7 @@ def run(data, model, optimizer, epochs=200, iter=100, early_stopping=True, patie
     val_acc_list = []
     test_acc_list = []
 
-    for _ in tqdm(range(iter)):
+    for _ in tqdm(range(niter)):
         # for early stopping
         model.to(device).reset_parameters()
         best_val_loss = float('inf')
