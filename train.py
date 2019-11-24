@@ -38,7 +38,7 @@ def evaluate(model, data):
 
 def run(data, model, optimizer, epochs=200, iter=100, early_stopping=True, patience=10, verbose=False):
     # for GPU
-    # data = data.to(device)
+    data.to(device)
 
     if torch.cuda.is_available():
         torch.cuda.synchronize()
