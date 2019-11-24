@@ -20,5 +20,7 @@ def normalize_adj(edge_list):
 
 
 def preprocess_features(features):
-    features = features / features.sum(dim=1, keepdim=True)
+    rowsum = features.sum(dim=1, keepdim=True)
+    rowsum[rowsum == 0] = 1
+    features = features / rowsum
     return features
