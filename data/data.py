@@ -51,11 +51,11 @@ def load_data(dataset_str):
     sorted_test_idx = np.sort(test_idx)
 
     if dataset_str == 'citeseer':
-        len_test_idx = (test_idx.max() - test_idx.min()).item() + 1
+        len_test_idx = max(test_idx) - min(test_idx) + 1
         tx_ext = torch.zeros(len_test_idx, tx.size(1))
-        tx_ext[sorted_test_idx - test_idx.min(), :] = tx
+        tx_ext[sorted_test_idx - min(test_idx), :] = tx
         ty_ext = torch.zeros(len_test_idx, ty.size(1))
-        ty_ext[sorted_test_idx - test_idx.min(), :] = ty
+        ty_ext[sorted_test_idx - min(test_idx), :] = ty
 
         tx, ty = tx_ext, ty_ext
 
