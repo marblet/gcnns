@@ -23,9 +23,12 @@ def evaluate(model, data):
 
     outputs = {}
     for key in ['train', 'val', 'test']:
-        if key == 'train': mask = data.train_mask
-        elif key == 'val': mask = data.val_mask
-        else: mask = data.test_mask
+        if key == 'train':
+            mask = data.train_mask
+        elif key == 'val':
+            mask = data.val_mask
+        else:
+            mask = data.test_mask
         loss = F.nll_loss(output[mask], data.labels[mask]).item()
         pred = output[mask].max(dim=1)[1]
         acc = pred.eq(data.labels[mask]).sum().item() / mask.sum().item()
@@ -47,11 +50,11 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
     test_acc_list = []
 
     for _ in tqdm(range(niter)):
-        # for early stopping
         model.to(device).reset_parameters()
+        # for early stopping
         best_val_loss = float('inf')
         counter = 0
-        for epoch in range(1, epochs+1):
+        for epoch in range(1, epochs + 1):
             train(model, optimizer, data)
             evals = evaluate(model, data)
 
@@ -66,7 +69,8 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
                 else:
                     counter += 1
                 if counter >= patience:
-                    # print("Stop training, epoch:", epoch)
+                    if verbose:
+                        print("Stop training, epoch:", epoch)
                     break
         if verbose:
             for met, val in evals.items():
