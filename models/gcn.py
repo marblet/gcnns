@@ -11,9 +11,8 @@ from .inits import glorot
 class GCN(nn.Module):
     def __init__(self, nfeat, nhid, nclass, dropout):
         super(GCN, self).__init__()
-        self.gc1 = GCNConv(nfeat, nhid)
-        self.gc2 = GCNConv(nhid, nclass)
-        self.dropout = dropout
+        self.gc1 = GCNConv(nfeat, nhid, dropout=dropout)
+        self.gc2 = GCNConv(nhid, nclass, dropout=dropout)
 
     def reset_parameters(self):
         self.gc1.reset_parameters()
@@ -23,16 +22,16 @@ class GCN(nn.Module):
         x = data.features
         adj = data.adj
         x = F.relu(self.gc1(x, adj))
-        x = F.dropout(x, self.dropout, training=self.training)
         x = self.gc2(x, adj)
         return F.log_softmax(x, dim=1)
 
 
 class GCNConv(Module):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, dropout=0.):
         super(GCNConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.dropout = dropout
         self.weight = Parameter(torch.Tensor(in_features, out_features))
         if bias:
             self.bias = Parameter(torch.Tensor(out_features))
@@ -46,6 +45,7 @@ class GCNConv(Module):
             self.bias.data.fill_(0)
 
     def forward(self, x, adj):
+        x = F.dropout(x, self.dropout, training=self.training)
         x = torch.matmul(x, self.weight)
         x = torch.spmm(adj, x)
         if self.bias is not None:
