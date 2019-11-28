@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 import pickle as pkl
+import scipy.sparse as sp
 import sys
 import torch
 
@@ -29,6 +30,50 @@ class Data(object):
 
 
 def load_data(dataset_str):
+    if dataset_str in ['cora', 'citeseer', 'pubmed']:
+        data = load_planetoid_data(dataset_str)
+    else:
+        data = load_npz_data(dataset_str)
+
+    return data
+
+
+def load_npz_data(dataset_str):
+    with np.load('data/npz/' + dataset_str + '.npz', allow_pickle=True) as loader:
+        loader = dict(loader)
+        adj_mat = sp.csr_matrix((loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
+                                 shape=loader['adj_shape']).tocoo()
+        edge_list = torch.cat((torch.Tensor(adj_mat.row).type(torch.int64).view(1, -1),
+                               torch.Tensor(adj_mat.col).type(torch.int64).view(1, -1)), dim=0)
+        edge_list = add_self_loops(edge_list, loader['adj_shape'][0])
+        adj = normalize_adj(edge_list)
+        if 'attr_data' in loader:
+            feature_mat = sp.csr_matrix((loader['attr_data'], loader['attr_indices'], loader['attr_indptr']),
+                                         shape=loader['attr_shape']).todense()
+        elif 'attr_matrix' in loader:
+            feature_mat = loader['attr_matrix']
+        else:
+            feature_mat = None
+        features = torch.Tensor(feature_mat)
+
+        if 'labels_data' in loader:
+            labels = sp.csr_matrix((loader['labels_data'], loader['labels_indices'], loader['labels_indptr']),
+                                    shape=loader['labels_shape']).todense()
+        elif 'labels' in loader:
+            labels = loader['labels']
+        else:
+            labels = None
+        labels = torch.Tensor(labels)
+        train_mask = None
+        val_mask = None
+        test_mask = None
+
+    data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
+
+    return data
+
+
+def load_planetoid_data(dataset_str):
     names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'graph']
     objects = []
     for name in names:

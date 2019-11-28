@@ -2,7 +2,7 @@ import torch
 
 
 def add_self_loops(edge_list, size):
-    i = torch.arange(size).view(1, -1)
+    i = torch.arange(size, dtype=torch.int64).view(1, -1)
     self_loops = torch.cat((i, i), dim=0)
     edge_list = torch.cat((edge_list, self_loops), dim=1)
     return edge_list
