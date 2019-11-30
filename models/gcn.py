@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import optim
+from torch.optim import Adam
 from torch.nn.modules.module import Module
 from torch.nn.parameter import Parameter
 
@@ -57,5 +57,5 @@ class GCNConv(Module):
 
 def create_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
     model = GCN(data.num_features, nhid, data.num_classes, dropout)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
