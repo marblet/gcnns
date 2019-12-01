@@ -34,25 +34,18 @@ class GCNConv(Module):
         super(GCNConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.Tensor(in_features, out_features))
-        if bias:
-            self.bias = Parameter(torch.Tensor(out_features))
-        else:
-            self.register_parameter('bias', None)
+        self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.reset_parameters()
 
     def reset_parameters(self):
-        glorot(self.weight)
-        if self.bias is not None:
-            self.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.fc.weight)
+        if self.fc.bias is not None:
+            self.fc.bias.data.fill_(0)
 
     def forward(self, x, adj):
-        x = torch.matmul(x, self.weight)
+        x = self.fc(x)
         x = torch.spmm(adj, x)
-        if self.bias is not None:
-            return x + self.bias
-        else:
-            return x
+        return x
 
 
 def create_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
