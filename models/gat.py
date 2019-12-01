@@ -5,8 +5,6 @@ from torch.nn.modules.module import Module
 from torch.nn.parameter import Parameter
 from torch.optim import Adam
 
-from .inits import glorot
-
 
 class GAT(nn.Module):
     def __init__(self, nfeat, nhid, nout, nhead, alpha, dropout):
@@ -45,8 +43,8 @@ class GATConv(Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        glorot(self.weight)
-        glorot(self.att)
+        nn.init.xavier_uniform_(self.weight)
+        nn.init.xavier_uniform_(self.att)
         if self.bias is not None:
             self.bias.data.fill_(0)
 
