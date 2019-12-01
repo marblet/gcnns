@@ -35,7 +35,7 @@ class GCNConv(Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.fc.weight)
+        nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
         if self.fc.bias is not None:
             self.fc.bias.data.fill_(0)
 
