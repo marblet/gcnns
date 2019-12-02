@@ -2,6 +2,7 @@ from data.data import load_data
 from models.gcn import create_gcn_model
 from models.gat import create_gat_model
 from models.sgc import create_sgc_model
+from models.gfnn import create_gfnn_model
 from train import run
 from utils import preprocess_features
 
