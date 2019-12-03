@@ -5,10 +5,17 @@ from torch.nn.parameter import Parameter
 from torch.optim import Adam
 from torch.nn.modules.module import Module
 
+from utils import get_degree
+
+
+def make_mask(x, adj, sigma, deg):
+    return
+
 
 class MaskedGCN(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout):
+    def __init__(self, data, nhid, dropout):
         super(MaskedGCN, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = MaskedGCNConv(nfeat, nhid)
         self.gc2 = MaskedGCNConv(nhid, nclass)
         self.dropout = dropout
@@ -42,12 +49,13 @@ class MaskedGCNConv(Module):
             self.fc.bias.data.fill_(0)
 
     def forward(self, x, adj):
+        mask = make_mask(x, adj, self.sigma, self.deg)
         x = self.fc(x)
         x = torch.spmm(adj, x)
         return x
 
 
 def create_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
-    model = MaskedGCN(data.num_features, nhid, data.num_classes, dropout)
+    model = MaskedGCN(data, nhid, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
