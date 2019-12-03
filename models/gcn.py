@@ -6,8 +6,9 @@ from torch.nn.modules.module import Module
 
 
 class GCN(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout):
+    def __init__(self, data, nhid, dropout):
         super(GCN, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = GCNConv(nfeat, nhid)
         self.gc2 = GCNConv(nhid, nclass)
         self.dropout = dropout
@@ -46,6 +47,6 @@ class GCNConv(Module):
 
 
 def create_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
-    model = GCN(data.num_features, nhid, data.num_classes, dropout)
+    model = GCN(data, nhid, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer

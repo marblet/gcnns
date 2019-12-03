@@ -7,10 +7,11 @@ from torch.optim import Adam
 
 
 class GAT(nn.Module):
-    def __init__(self, nfeat, nhid, nout, nhead, alpha, dropout):
+    def __init__(self, data, nhid, nhead, alpha, dropout):
         super(GAT, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = GATConv(nfeat, nhid, nhead, alpha, dropout)
-        self.gc2 = GATConv(nhid * nhead, nout, 1, alpha, dropout)
+        self.gc2 = GATConv(nhid * nhead, nclass, 1, alpha, dropout)
 
     def reset_parameters(self):
         self.gc1.reset_parameters()
@@ -67,6 +68,6 @@ class GATConv(Module):
 
 
 def create_gat_model(data, nhid=16, nhead=8, alpha=0.1, dropout=0.6, lr=0.01, weight_decay=5e-4):
-    model = GAT(data.num_features, nhid, data.num_classes, nhead, alpha, dropout)
+    model = GAT(data, nhid, nhead, alpha, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer

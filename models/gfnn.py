@@ -5,15 +5,16 @@ from torch.optim import Adam
 
 
 class GFNN(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout, x, adj, K=2):
+    def __init__(self, data, nhid, dropout, K=2):
         super(GFNN, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
         self.fc1 = nn.Linear(nfeat, nhid)
         self.fc2 = nn.Linear(nhid, nclass)
         self.dropout = dropout
         self.prelu = nn.PReLU()
-        processed_x = x.clone()
+        processed_x = data.features.clone()
         for _ in range(K):
-            processed_x = torch.spmm(adj, processed_x)
+            processed_x = torch.spmm(data.adj, processed_x)
         self.processed_x = processed_x
 
     def reset_parameters(self):
@@ -29,6 +30,6 @@ class GFNN(nn.Module):
 
 
 def create_gfnn_model(data, nhid=32, dropout=0.5, lr=0.1, weight_decay=3e-5):
-    model = GFNN(data.num_features, nhid, data.num_classes, dropout, data.features, data.adj)
+    model = GFNN(data, nhid, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer

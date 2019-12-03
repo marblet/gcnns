@@ -5,8 +5,11 @@ from torch.optim import Adam
 
 
 class SGC(nn.Module):
-    def __init__(self, nfeat, nclass, x, adj, K=2):
+    def __init__(self, data, K=2):
         super(SGC, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
+        x = data.features
+        adj = data.adj
         self.fc = nn.Linear(nfeat, nclass)
         processed_x = x.clone()
         for _ in range(K):
@@ -22,6 +25,6 @@ class SGC(nn.Module):
 
 
 def create_sgc_model(data, lr=0.2, weight_decay=3e-5):
-    model = SGC(data.num_features, data.num_classes, data.features, data.adj)
+    model = SGC(data)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
