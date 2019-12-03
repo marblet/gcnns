@@ -22,6 +22,7 @@ class Data(object):
 
     def to(self, device):
         self.adj = self.adj.to(device)
+        self.edge_list = self.edge_list.to(device)
         self.features = self.features.to(device)
         self.labels = self.labels.to(device)
         self.train_mask = self.train_mask.to(device)
