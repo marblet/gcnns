@@ -49,7 +49,7 @@ class MaskedGCNConv(Module):
         self.out_features = out_features
         self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.degree = get_degree(data.edge_list).float()
-        self.dense_adj = data.adj.to_dense()
+        self.dense_adj = data.adj.to_dense().to(device)
         self.sigma = Parameter(torch.Tensor(in_features))
         self.reset_parameters()
 
