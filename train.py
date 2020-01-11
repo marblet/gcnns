@@ -59,8 +59,11 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
             evals = evaluate(model, data)
 
             if verbose:
-                print('epoch:', epoch, 'train loss:', evals['train_loss'],
-                      'val loss:', evals['val_loss'])
+                print('epoch:', epoch,
+                      'train loss:', evals['train_loss'],
+                      'train acc:', evals['train_acc'],
+                      'val loss:', evals['val_loss'],
+                      'val acc:', evals['val_acc'])
 
             if early_stopping:
                 if evals['val_loss'] < best_val_loss:
