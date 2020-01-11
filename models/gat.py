@@ -4,12 +4,16 @@ import torch.nn.functional as F
 from torch.nn.modules.module import Module
 from torch.optim import Adam
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class GAT(nn.Module):
     def __init__(self, data, nhid, nheads, alpha, dropout):
         super(GAT, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = [GATConv(nfeat, nhid, alpha, dropout) for _ in range(nheads)]
+        for i, gc in enumerate(self.gc1):
+            self.add_module('attention_{}'.format(i), gc)
         self.gc2 = GATConv(nhid * nheads, nclass, alpha, dropout)
         self.dropout = dropout
 
@@ -26,16 +30,48 @@ class GAT(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-class GATConv(Module):
+class SpecialSpmmFunction(torch.autograd.Function):
+    """Special function for only sparse region backpropataion layer."""
+
+    @staticmethod
+    def forward(ctx, indices, values, shape, b):
+        assert indices.requires_grad == False
+        a = torch.sparse_coo_tensor(indices, values, shape)
+        ctx.save_for_backward(a, b)
+        ctx.N = shape[0]
+        return torch.matmul(a, b)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a, b = ctx.saved_tensors
+        grad_values = grad_b = None
+        if ctx.needs_input_grad[1]:
+            grad_a_dense = grad_output.matmul(b.t())
+            edge_idx = a._indices()[0, :] * ctx.N + a._indices()[1, :]
+            grad_values = grad_a_dense.view(-1)[edge_idx]
+        if ctx.needs_input_grad[3]:
+            grad_b = a.t().matmul(grad_output)
+        return None, grad_values, None, grad_b
+
+
+class SpecialSpmm(nn.Module):
+    def forward(self, indices, values, shape, b):
+        return SpecialSpmmFunction.apply(indices, values, shape, b)
+
+
+class GATConv(nn.Module):
     def __init__(self, in_features, out_features, alpha, dropout, bias=True):
         super(GATConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+        self.alpha = alpha
+
         self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.att = nn.Conv1d(1, 1, 2 * out_features, bias=False)
-        self.alpha = alpha
-        self.dropout = dropout
-        self.reset_parameters()
+
+        self.dropout = nn.Dropout(dropout)
+        self.leakyrelu = nn.LeakyReLU(self.alpha)
+        self.special_spmm = SpecialSpmm()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
@@ -44,22 +80,26 @@ class GATConv(Module):
             self.fc.bias.data.fill_(0)
 
     def forward(self, x, edge_list):
-        source, target = edge_list
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.fc(x)
-        wh_cat = torch.cat((x[source], x[target]), dim=1)
-        wh_cat = torch.unsqueeze(wh_cat, 1)
-        attention = F.leaky_relu(self.att(wh_cat), negative_slope=self.alpha)
-        attention = torch.squeeze(attention)
-        adj = torch.sparse.FloatTensor(edge_list, attention).to_dense()
-        adj[adj == 0] = -9e15
-        adj = F.softmax(adj, dim=1)
-        adj = F.dropout(adj, p=self.dropout, training=self.training)
-        x = torch.matmul(adj, x)
-        return x
+        N = x.size()[0]
+
+        x = F.dropout(x, p=0.6, training=self.training)
+        h = self.fc(x)
+
+        edge_h = torch.cat((h[edge_list[0, :], :], h[edge_list[1, :], :]), dim=1)
+        edge_e = torch.unsqueeze(edge_h, 1)
+        edge_e = torch.squeeze(self.att(edge_e))
+        edge_e = torch.exp(self.leakyrelu(edge_e))
+
+        e_rowsum = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=device))
+
+        edge_e = self.dropout(edge_e)
+        h_prime = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), h)
+        h_prime = h_prime.div(e_rowsum)
+
+        return h_prime
 
 
-def create_gat_model(data, nhid=8, nhead=8, alpha=0.1, dropout=0.6, lr=0.01, weight_decay=5e-4):
+def create_gat_model(data, nhid=8, nhead=8, alpha=0.2, dropout=0.6, lr=0.01, weight_decay=5e-4):
     model = GAT(data, nhid, nhead, alpha, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
