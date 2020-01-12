@@ -69,7 +69,7 @@ class GATConv(nn.Module):
         self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.att = nn.Conv1d(1, 1, 2 * out_features, bias=False)
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = dropout
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.special_spmm = SpecialSpmm()
 
@@ -82,7 +82,7 @@ class GATConv(nn.Module):
     def forward(self, x, edge_list):
         N = x.size()[0]
 
-        x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)
         h = self.fc(x)
 
         edge_h = torch.cat((h[edge_list[0, :], :], h[edge_list[1, :], :]), dim=1)
@@ -92,14 +92,14 @@ class GATConv(nn.Module):
 
         e_rowsum = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=device))
 
-        edge_e = self.dropout(edge_e)
+        edge_e = F.dropout(edge_e, p=self.dropout, training=self.training)
         h_prime = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), h)
         h_prime = h_prime.div(e_rowsum)
 
         return h_prime
 
 
-def create_gat_model(data, nhid=8, nhead=8, alpha=0.2, dropout=0.6, lr=0.01, weight_decay=5e-4):
+def create_gat_model(data, nhid=8, nhead=8, alpha=0.2, dropout=0.6, lr=0.005, weight_decay=5e-4):
     model = GAT(data, nhid, nhead, alpha, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
