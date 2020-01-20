@@ -7,6 +7,7 @@ from models.gcn import GCNConv
 
 class GAE(nn.Module):
     def __init__(self, data, nhid, nlat, dropout):
+        super(GAE, self).__init__()
         self.gc1 = GCNConv(data.num_features, nhid)
         self.gc2 = GCNConv(nhid, nlat)
         self.dropout = dropout
@@ -20,6 +21,7 @@ class GAE(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.gc1(x, adj)
         x = F.dropout(x, p=self.dropout, training=self.training)
+        x = F.relu(x)
         x = self.gc2(x, adj)
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = torch.mm(x, x.t())
