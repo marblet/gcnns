@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.module import Module
 from torch.optim import Adam
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,9 +23,12 @@ class GAT(nn.Module):
 
     def forward(self, data):
         x, edge_list = data.features, data.edge_list
+        x = F.dropout(x, p=self.dropout, training=self.training)
         x = torch.cat([gc(x, edge_list) for gc in self.gc1], dim=1)
         x = F.elu(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.gc2(x, edge_list)
+        x = F.elu(x)
         return F.log_softmax(x, dim=1)
 
 
@@ -82,9 +84,7 @@ class GATConv(nn.Module):
     def forward(self, x, edge_list):
         N = x.size()[0]
 
-        x = F.dropout(x, p=self.dropout, training=self.training)
         h = self.fc(x)
-
         edge_h = torch.cat((h[edge_list[0, :], :], h[edge_list[1, :], :]), dim=1)
         edge_e = torch.unsqueeze(edge_h, 1)
         edge_e = torch.squeeze(self.att(edge_e))
