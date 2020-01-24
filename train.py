@@ -8,7 +8,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class EarlyStopping:
-    def __init__(self, patience, verbose, use_loss=True, use_acc=False, save_model=False):
+    def __init__(self, patience, verbose, use_loss, use_acc, save_model):
         assert use_loss or use_acc, 'use loss or (and) acc'
         self.patience = patience
         self.use_loss = use_loss
@@ -90,7 +90,8 @@ def evaluate(model, data):
     return outputs
 
 
-def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, patience=10, verbose=False):
+def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, patience=10,
+        use_loss=True, use_acc=False, save_model=True, verbose=False):
     # for GPU
     data.to(device)
 
@@ -104,7 +105,7 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
         model.to(device).reset_parameters()
         # for early stopping
         if early_stopping:
-            stop_checker = EarlyStopping(patience, verbose)
+            stop_checker = EarlyStopping(patience, verbose, use_loss, use_acc, save_model)
         for epoch in range(1, epochs + 1):
             train(model, optimizer, data)
             evals = evaluate(model, data)
