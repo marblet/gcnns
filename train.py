@@ -95,17 +95,18 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
     # for GPU
     data.to(device)
 
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
-
     val_acc_list = []
     test_acc_list = []
 
     for _ in tqdm(range(niter)):
         model.to(device).reset_parameters()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
         # for early stopping
         if early_stopping:
             stop_checker = EarlyStopping(patience, verbose, use_loss, use_acc, save_model)
+
         for epoch in range(1, epochs + 1):
             train(model, optimizer, data)
             evals = evaluate(model, data)
@@ -120,6 +121,9 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
             if early_stopping:
                 if stop_checker.check(evals, model, epoch):
                     break
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
         evals = evaluate(model, data)
         if verbose:
             for met, val in evals.items():
