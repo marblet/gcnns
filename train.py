@@ -1,9 +1,60 @@
 import torch
 import torch.nn.functional as F
+from copy import deepcopy
 from numpy import mean, std
 from tqdm import tqdm
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+class EarlyStopping:
+    def __init__(self, patience, verbose, use_loss=True, use_acc=False, save_model=False):
+        assert use_loss or use_acc, 'use loss or (and) acc'
+        self.patience = patience
+        self.use_loss = use_loss
+        self.use_acc = use_acc
+        self.save_model = save_model
+        self.verbose = verbose
+        self.counter = 0
+        self.best_val_loss = float('inf')
+        self.best_val_acc = 0
+        self.state_dict = None
+
+    def check(self, evals, model, epoch):
+        if self.use_loss and self.use_acc:
+            if evals['val_loss'] < self.best_val_loss or evals['val_acc'] > self.best_val_acc:
+                if evals['val_loss'] < self.best_val_loss and evals['val_acc'] > self.best_val_acc:
+                    if self.save_model:
+                        self.state_dict = deepcopy(model.state_dict())
+                self.best_val_loss = min(self.best_val_loss, evals['val_loss'])
+                self.best_val_acc = max(self.best_val_acc, evals['val_acc'])
+                self.counter = 0
+            else:
+                self.counter += 1
+        elif self.use_loss:
+            if evals['val_loss'] < self.best_val_loss:
+                self.best_val_loss = evals['val_loss']
+                self.counter = 0
+                if self.save_model:
+                    self.state_dict = deepcopy(model.state_dict())
+            else:
+                self.counter += 1
+        elif self.use_acc:
+            if evals['val_acc'] > self.best_val_acc:
+                self.best_val_acc = evals['val_acc']
+                self.counter = 0
+                if self.save_model:
+                    self.state_dict = deepcopy(model.state_dict())
+            else:
+                self.counter += 1
+        stop = False
+        if self.counter >= self.patience:
+            stop = True
+            if self.verbose:
+                print("Stop training, epoch:", epoch)
+            if self.save_model:
+                model.load_state_dict(self.state_dict)
+        return stop
 
 
 def train(model, optimizer, data):
@@ -52,8 +103,8 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
     for _ in tqdm(range(niter)):
         model.to(device).reset_parameters()
         # for early stopping
-        best_val_loss = float('inf')
-        counter = 0
+        if early_stopping:
+            stop_checker = EarlyStopping(patience, verbose)
         for epoch in range(1, epochs + 1):
             train(model, optimizer, data)
             evals = evaluate(model, data)
@@ -66,15 +117,9 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
                       'val acc: {:.5f}'.format(evals['val_acc']))
 
             if early_stopping:
-                if evals['val_loss'] < best_val_loss:
-                    best_val_loss = evals['val_loss']
-                    counter = 0
-                else:
-                    counter += 1
-                if counter >= patience:
-                    if verbose:
-                        print("Stop training, epoch:", epoch)
+                if stop_checker.check(evals, model, epoch):
                     break
+        evals = evaluate(model, data)
         if verbose:
             for met, val in evals.items():
                 print(met, val)
