@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class GAT(nn.Module):
     def __init__(self, data, nhid, nhead, alpha, dropout):
         """Sparse version of GAT."""
         super(GAT, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
-        self.dropout = dropout
-
         self.attentions = [GATConv(nfeat,
                                    nhid,
                                    dropout=dropout,
@@ -32,9 +32,7 @@ class GAT(nn.Module):
 
     def forward(self, data):
         x, edge = data.features, data.edge_list
-        x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, edge) for att in self.attentions], dim=1)
-        x = F.dropout(x, self.dropout, training=self.training)
         x = self.out_att(x, edge)
         return F.log_softmax(x, dim=1)
 
@@ -83,7 +81,7 @@ class GATConv(nn.Module):
         self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.a = nn.Parameter(torch.zeros(size=(1, 2 * out_features)))
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = dropout
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.special_spmm = SpecialSpmm()
         self.reset_parameters()
@@ -94,12 +92,11 @@ class GATConv(nn.Module):
             self.fc.bias.data.fill_(0)
         nn.init.xavier_uniform_(self.a.data, gain=1.414)
 
-    def forward(self, input, edge):
-        dv = 'cuda' if input.is_cuda else 'cpu'
+    def forward(self, x, edge):
+        N = x.size()[0]
 
-        N = input.size()[0]
-
-        h = self.fc(input)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        h = self.fc(x)
         # h: N x out
         assert not torch.isnan(h).any()
 
@@ -111,10 +108,10 @@ class GATConv(nn.Module):
         assert not torch.isnan(edge_e).any()
         # edge_e: E
 
-        e_rowsum = self.special_spmm(edge, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=dv))
+        e_rowsum = self.special_spmm(edge, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=device))
         # e_rowsum: N x 1
 
-        edge_e = self.dropout(edge_e)
+        edge_e = F.dropout(edge_e, p=self.dropout, training=self.training)
         # edge_e: E
 
         h_prime = self.special_spmm(edge, edge_e, torch.Size([N, N]), h)
