@@ -20,9 +20,7 @@ class VGAE(nn.Module):
 
     def reparameterize(self, mu, logvar):
         if self.training:
-            std = torch.exp(logvar)
-            eps = torch.randn_like(std)
-            return eps.mul(std).add_(mu)
+            return mu + torch.randn_like(logvar) * torch.exp(logvar)
         else:
             return mu
 

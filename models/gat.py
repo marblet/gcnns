@@ -3,32 +3,39 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 class GAT(nn.Module):
-    def __init__(self, data, nhid, nheads, alpha, dropout):
+    def __init__(self, data, nhid, nhead, alpha, dropout):
+        """Sparse version of GAT."""
         super(GAT, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
-        self.gc1 = [GATConv(nfeat, nhid, alpha, dropout) for _ in range(nheads)]
-        for i, gc in enumerate(self.gc1):
-            self.add_module('attention_{}'.format(i), gc)
-        self.gc2 = GATConv(nhid * nheads, nclass, alpha, dropout)
         self.dropout = dropout
 
+        self.attentions = [GATConv(nfeat,
+                                   nhid,
+                                   dropout=dropout,
+                                   alpha=alpha,
+                                   concat=True) for _ in range(nhead)]
+        for i, attention in enumerate(self.attentions):
+            self.add_module('attention_{}'.format(i), attention)
+
+        self.out_att = GATConv(nhid * nhead,
+                               nclass,
+                               dropout=dropout,
+                               alpha=alpha,
+                               concat=False)
+
     def reset_parameters(self):
-        for gc in self.gc1:
-            gc.reset_parameters()
-        self.gc2.reset_parameters()
+        for att in self.attentions:
+            att.reset_parameters()
+        self.out_att.reset_parameters()
 
     def forward(self, data):
-        x, edge_list = data.features, data.edge_list
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = torch.cat([gc(x, edge_list) for gc in self.gc1], dim=1)
-        x = F.elu(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.gc2(x, edge_list)
-        x = F.elu(x)
+        x, edge = data.features, data.edge_list
+        x = F.dropout(x, self.dropout, training=self.training)
+        x = torch.cat([att(x, edge) for att in self.attentions], dim=1)
+        x = F.dropout(x, self.dropout, training=self.training)
+        x = self.out_att(x, edge)
         return F.log_softmax(x, dim=1)
 
 
@@ -62,41 +69,71 @@ class SpecialSpmm(nn.Module):
 
 
 class GATConv(nn.Module):
-    def __init__(self, in_features, out_features, alpha, dropout, bias=True):
+    """
+    Sparse version GAT layer, similar to https://arxiv.org/abs/1710.10903
+    """
+
+    def __init__(self, in_features, out_features, dropout, alpha, concat=True, bias=True):
         super(GATConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.alpha = alpha
+        self.concat = concat
 
         self.fc = nn.Linear(in_features, out_features, bias=bias)
-        self.att = nn.Conv1d(1, 1, 2 * out_features, bias=False)
+        self.a = nn.Parameter(torch.zeros(size=(1, 2 * out_features)))
 
-        self.dropout = dropout
+        self.dropout = nn.Dropout(dropout)
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.special_spmm = SpecialSpmm()
+        self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
-        nn.init.xavier_uniform_(self.att.weight, gain=1.414)
         if self.fc.bias is not None:
             self.fc.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.a.data, gain=1.414)
 
-    def forward(self, x, edge_list):
-        N = x.size()[0]
+    def forward(self, input, edge):
+        dv = 'cuda' if input.is_cuda else 'cpu'
 
-        h = self.fc(x)
-        edge_h = torch.cat((h[edge_list[0, :], :], h[edge_list[1, :], :]), dim=1)
-        edge_e = torch.unsqueeze(edge_h, 1)
-        edge_e = torch.squeeze(self.att(edge_e))
-        edge_e = torch.exp(self.leakyrelu(edge_e))
+        N = input.size()[0]
 
-        e_rowsum = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=device))
+        h = self.fc(input)
+        # h: N x out
+        assert not torch.isnan(h).any()
 
-        edge_e = F.dropout(edge_e, p=self.dropout, training=self.training)
-        h_prime = self.special_spmm(edge_list, edge_e, torch.Size([N, N]), h)
+        # Self-attention on the nodes - Shared attention mechanism
+        edge_h = torch.cat((h[edge[0, :], :], h[edge[1, :], :]), dim=1).t()
+        # edge: 2*D x E
+
+        edge_e = torch.exp(self.leakyrelu(self.a.mm(edge_h).squeeze()))
+        assert not torch.isnan(edge_e).any()
+        # edge_e: E
+
+        e_rowsum = self.special_spmm(edge, edge_e, torch.Size([N, N]), torch.ones(size=(N, 1), device=dv))
+        # e_rowsum: N x 1
+
+        edge_e = self.dropout(edge_e)
+        # edge_e: E
+
+        h_prime = self.special_spmm(edge, edge_e, torch.Size([N, N]), h)
+        assert not torch.isnan(h_prime).any()
+        # h_prime: N x out
+
         h_prime = h_prime.div(e_rowsum)
+        # h_prime: N x out
+        assert not torch.isnan(h_prime).any()
 
-        return h_prime
+        if self.concat:
+            # if this layer is not last layer,
+            return F.elu(h_prime)
+        else:
+            # if this layer is last layer,
+            return h_prime
+
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> ' + str(self.out_features) + ')'
 
 
 def create_gat_model(data, nhid=8, nhead=8, alpha=0.2, dropout=0.6, lr=0.005, weight_decay=5e-4):
