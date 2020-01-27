@@ -8,22 +8,92 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class GAT(nn.Module):
     def __init__(self, data, nhid, nhead, alpha, dropout):
-        """Sparse version of GAT."""
-        super(GAT, self).__init__()
+        """Dense version of GAT."""
         nfeat, nclass = data.num_features, data.num_classes
-        self.attentions = [GATConv(nfeat,
-                                   nhid,
-                                   dropout=dropout,
-                                   alpha=alpha,
-                                   concat=True) for _ in range(nhead)]
+        super(GAT, self).__init__()
+        self.dropout = dropout
+
+        self.attentions = [GATConv(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nhead)]
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
-        self.out_att = GATConv(nhid * nhead,
-                               nclass,
-                               dropout=dropout,
-                               alpha=alpha,
-                               concat=False)
+        self.out_att = GATConv(nhid * nhead, nclass, dropout=dropout, alpha=alpha, concat=False)
+
+    def reset_parameters(self):
+        for att in self.attentions:
+            att.reset_parameters()
+        self.out_att.reset_parameters()
+
+    def forward(self, data):
+        x, adj = data.features, data.adj
+        adj = adj.to_dense()
+        x = F.dropout(x, self.dropout, training=self.training)
+        x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
+        x = F.dropout(x, self.dropout, training=self.training)
+        return F.log_softmax(x, dim=1)
+
+
+class GATConv(nn.Module):
+    """
+    Simple GAT layer, similar to https://arxiv.org/abs/1710.10903
+    """
+
+    def __init__(self, in_features, out_features, dropout, alpha, concat=True, bias=True):
+        super(GATConv, self).__init__()
+        self.dropout = dropout
+        self.in_features = in_features
+        self.out_features = out_features
+        self.alpha = alpha
+        self.concat = concat
+
+        self.fc = nn.Linear(in_features, out_features, bias=bias)
+        self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)))
+
+        self.leakyrelu = nn.LeakyReLU(self.alpha)
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
+        if self.fc.bias is not None:
+            self.fc.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.a.data, gain=1.414)
+
+    def forward(self, x, adj):
+        h = self.fc(x)
+        N = h.size()[0]
+
+        a_input = torch.cat([h.repeat(1, N).view(N * N, -1), h.repeat(N, 1)], dim=1).view(N, -1, 2 * self.out_features)
+        e = self.leakyrelu(torch.matmul(a_input, self.a).squeeze(2))
+
+        zero_vec = -9e15*torch.ones_like(e)
+        attention = torch.where(adj > 0, e, zero_vec)
+        attention = F.softmax(attention, dim=1)
+        attention = F.dropout(attention, self.dropout, training=self.training)
+        h_prime = torch.matmul(attention, h)
+
+        if self.concat:
+            return F.elu(h_prime)
+        else:
+            return h_prime
+
+
+class SpGAT(nn.Module):
+    def __init__(self, data, nhid, nhead, alpha, dropout):
+        """Sparse version of GAT."""
+        super(SpGAT, self).__init__()
+        nfeat, nclass = data.num_features, data.num_classes
+        self.attentions = [SpGATConv(nfeat,
+                                     nhid,
+                                     dropout=dropout,
+                                     alpha=alpha,
+                                     concat=True) for _ in range(nhead)]
+        for i, attention in enumerate(self.attentions):
+            self.add_module('attention_{}'.format(i), attention)
+
+        self.out_att = SpGATConv(nhid * nhead,
+                                 nclass,
+                                 dropout=dropout,
+                                 alpha=alpha,
+                                 concat=False)
 
     def reset_parameters(self):
         for att in self.attentions:
@@ -66,13 +136,13 @@ class SpecialSpmm(nn.Module):
         return SpecialSpmmFunction.apply(indices, values, shape, b)
 
 
-class GATConv(nn.Module):
+class SpGATConv(nn.Module):
     """
     Sparse version GAT layer, similar to https://arxiv.org/abs/1710.10903
     """
 
     def __init__(self, in_features, out_features, dropout, alpha, concat=True, bias=True):
-        super(GATConv, self).__init__()
+        super(SpGATConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.alpha = alpha
