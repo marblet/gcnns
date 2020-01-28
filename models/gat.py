@@ -11,13 +11,13 @@ class GAT(nn.Module):
         """Dense version of GAT."""
         nfeat, nclass = data.num_features, data.num_classes
         super(GAT, self).__init__()
-        self.dropout = dropout
 
         self.attentions = [GATConv(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nhead)]
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
         self.out_att = GATConv(nhid * nhead, nclass, dropout=dropout, alpha=alpha, concat=False)
+        self.reset_parameters()
 
     def reset_parameters(self):
         for att in self.attentions:
@@ -27,9 +27,8 @@ class GAT(nn.Module):
     def forward(self, data):
         x, adj = data.features, data.adj
         adj = adj.to_dense()
-        x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
-        x = F.dropout(x, self.dropout, training=self.training)
+        x = self.out_att(x, adj)
         return F.log_softmax(x, dim=1)
 
 
@@ -58,6 +57,7 @@ class GATConv(nn.Module):
         nn.init.xavier_uniform_(self.a.data, gain=1.414)
 
     def forward(self, x, adj):
+        x = F.dropout(x, self.dropout, training=self.training)
         h = self.fc(x)
         N = h.size()[0]
 
