@@ -76,6 +76,72 @@ class GATConv(nn.Module):
             return h_prime
 
 
+class MyGAT(nn.Module):
+    def __init__(self, data, nhid, nhead, alpha, dropout):
+        """Dense version of GAT."""
+        nfeat, nclass = data.num_features, data.num_classes
+        super(MyGAT, self).__init__()
+
+        self.attentions = [MyGATConv(nfeat, nhid, dropout=dropout, alpha=alpha) for _ in range(nhead)]
+        for i, attention in enumerate(self.attentions):
+            self.add_module('attention_{}'.format(i), attention)
+
+        self.out_att = MyGATConv(nhid * nhead, nclass, dropout=dropout, alpha=alpha)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for att in self.attentions:
+            att.reset_parameters()
+        self.out_att.reset_parameters()
+
+    def forward(self, data):
+        x, edge_list = data.features, data.edge_list
+        x = torch.cat([att(x, edge_list) for att in self.attentions], dim=1)
+        x = self.out_att(x, edge_list)
+        return F.log_softmax(x, dim=1)
+
+
+class MyGATConv(nn.Module):
+    """
+    Simple GAT layer, similar to https://arxiv.org/abs/1710.10903
+    """
+
+    def __init__(self, in_features, out_features, dropout, alpha, bias=True):
+        super(MyGATConv, self).__init__()
+        self.dropout = dropout
+        self.in_features = in_features
+        self.out_features = out_features
+        self.alpha = alpha
+
+        self.fc = nn.Linear(in_features, out_features, bias=bias)
+        self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)))
+
+        self.leakyrelu = nn.LeakyReLU(self.alpha)
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
+        if self.fc.bias is not None:
+            self.fc.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.a.data, gain=1.414)
+
+    def forward(self, x, edge_list):
+        x = F.dropout(x, self.dropout, training=self.training)
+        h = self.fc(x)
+        N = h.size()[0]
+
+        source, target = edge_list
+        a_input = torch.cat([h[source], h[target]], dim=1)
+        e = self.leakyrelu(torch.matmul(a_input, self.a))
+
+        attention = -1e20*torch.ones(N, N)
+        attention[source, target] = e[:, 0]
+        attention = F.softmax(attention, dim=1)
+        attention = F.dropout(attention, self.dropout, training=self.training)
+        h_prime = torch.matmul(attention, h)
+
+        return h_prime
+
+
 class SpGAT(nn.Module):
     def __init__(self, data, nhid, nhead, alpha, dropout):
         """Sparse version of GAT."""
@@ -204,6 +270,6 @@ class SpGATConv(nn.Module):
 
 
 def create_gat_model(data, nhid=8, nhead=8, alpha=0.2, dropout=0.6, lr=0.005, weight_decay=5e-4):
-    model = GAT(data, nhid, nhead, alpha, dropout)
+    model = MyGAT(data, nhid, nhead, alpha, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
