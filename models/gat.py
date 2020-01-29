@@ -97,6 +97,7 @@ class MyGAT(nn.Module):
     def forward(self, data):
         x, edge_list = data.features, data.edge_list
         x = torch.cat([att(x, edge_list) for att in self.attentions], dim=1)
+        x = F.elu(x)
         x = self.out_att(x, edge_list)
         return F.log_softmax(x, dim=1)
 
