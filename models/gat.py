@@ -40,8 +40,6 @@ class GATConv(nn.Module):
         self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)))
 
-        self.leakyrelu = nn.LeakyReLU(self.alpha)
-
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
         if self.fc.bias is not None:

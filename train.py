@@ -33,7 +33,7 @@ class EarlyStopping:
             else:
                 self.counter += 1
         elif self.use_loss:
-            if evals['val_loss'] <= self.best_val_loss:
+            if evals['val_loss'] < self.best_val_loss:
                 self.best_val_loss = evals['val_loss']
                 self.counter = 0
                 if self.save_model:
@@ -41,7 +41,7 @@ class EarlyStopping:
             else:
                 self.counter += 1
         elif self.use_acc:
-            if evals['val_acc'] >= self.best_val_acc:
+            if evals['val_acc'] > self.best_val_acc:
                 self.best_val_acc = evals['val_acc']
                 self.counter = 0
                 if self.save_model:
