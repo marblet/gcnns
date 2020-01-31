@@ -92,7 +92,7 @@ def evaluate(model, data):
 
 
 def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, patience=10,
-        use_loss=True, use_acc=False, save_model=True, verbose=False):
+        use_loss=True, use_acc=False, save_model=False, verbose=False):
     # for GPU
     data.to(device)
 
