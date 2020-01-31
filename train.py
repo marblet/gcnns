@@ -22,8 +22,9 @@ class EarlyStopping:
 
     def check(self, evals, model, epoch):
         if self.use_loss and self.use_acc:
-            if evals['val_loss'] < self.best_val_loss or evals['val_acc'] > self.best_val_acc:
-                if evals['val_loss'] < self.best_val_loss and evals['val_acc'] > self.best_val_acc:
+            # For GAT, based on https://github.com/PetarV-/GAT/blob/master/execute_cora.py
+            if evals['val_loss'] <= self.best_val_loss or evals['val_acc'] >= self.best_val_acc:
+                if evals['val_loss'] <= self.best_val_loss and evals['val_acc'] >= self.best_val_acc:
                     if self.save_model:
                         self.state_dict = deepcopy(model.state_dict())
                 self.best_val_loss = min(self.best_val_loss, evals['val_loss'])
@@ -32,7 +33,7 @@ class EarlyStopping:
             else:
                 self.counter += 1
         elif self.use_loss:
-            if evals['val_loss'] < self.best_val_loss:
+            if evals['val_loss'] <= self.best_val_loss:
                 self.best_val_loss = evals['val_loss']
                 self.counter = 0
                 if self.save_model:
@@ -40,7 +41,7 @@ class EarlyStopping:
             else:
                 self.counter += 1
         elif self.use_acc:
-            if evals['val_acc'] > self.best_val_acc:
+            if evals['val_acc'] >= self.best_val_acc:
                 self.best_val_acc = evals['val_acc']
                 self.counter = 0
                 if self.save_model:
