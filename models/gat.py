@@ -38,17 +38,23 @@ class GATConv(nn.Module):
         self.alpha = alpha
 
         self.fc = nn.Linear(in_features, out_features, bias=bias)
+        self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
         self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
-        if self.fc.bias is not None:
-            self.fc.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.weight.data, gain=1.414)
+        if self.bias is not None:
+            self.bias.data.fill_(0)
         nn.init.xavier_uniform_(self.a.data, gain=1.414)
 
     def forward(self, x, edge_list):
         x = F.dropout(x, self.dropout, training=self.training)
-        h = self.fc(x)
+        h = torch.matmul(x, self.weight)
 
         source, target = edge_list
         a_input = torch.cat([h[source], h[target]], dim=1)
@@ -60,6 +66,8 @@ class GATConv(nn.Module):
         attention = F.softmax(attention, dim=1)
         attention = F.dropout(attention, self.dropout, training=self.training)
         h_prime = torch.matmul(attention, h)
+        if self.bias is not None:
+            h_prime = h_prime + self.bias
 
         return h_prime
 
