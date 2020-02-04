@@ -65,7 +65,7 @@ class GATConv(nn.Module):
         attention[source, target] = e[:, 0]
         attention = F.softmax(attention, dim=1)
         attention = F.dropout(attention, self.dropout, training=self.training)
-        h = F.dropout(attention, self.dropout, training=self.training)
+        h = F.dropout(h, self.dropout, training=self.training)
         h_prime = torch.matmul(attention, h)
         if self.bias is not None:
             h_prime = h_prime + self.bias
