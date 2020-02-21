@@ -32,17 +32,23 @@ class GCNConv(Module):
         super(GCNConv, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.fc = nn.Linear(in_features, out_features, bias=bias)
+        self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter('bias', None)
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.fc.weight, gain=1.414)
-        if self.fc.bias is not None:
-            self.fc.bias.data.fill_(0)
+        nn.init.xavier_uniform_(self.weight.data, gain=1.414)
+        if self.bias is not None:
+            self.bias.data.fill_(0)
 
     def forward(self, x, adj):
-        x = self.fc(x)
+        x = torch.matmul(x, self.weight)
         x = torch.spmm(adj, x)
+        if self.bias is not None:
+            x += self.bias
         return x
 
 
