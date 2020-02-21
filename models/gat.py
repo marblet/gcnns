@@ -37,7 +37,6 @@ class GATConv(nn.Module):
         self.out_features = out_features
         self.alpha = alpha
 
-        self.fc = nn.Linear(in_features, out_features, bias=bias)
         self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features))
         self.a = nn.Parameter(torch.zeros(size=(2*out_features, 1)))
         if bias:
