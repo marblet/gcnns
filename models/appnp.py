@@ -12,7 +12,7 @@ class APPNP(nn.Module):
         self.fc1 = nn.Linear(data.num_features, nhid)
         self.fc2 = nn.Linear(nhid, data.num_classes)
         self.dropout = dropout
-        self.prop = APPNP_prop(alpha, K)
+        self.prop = APPNP_prop(alpha, K, dropout)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -30,15 +30,21 @@ class APPNP(nn.Module):
 
 
 class APPNP_prop(nn.Module):
-    def __init__(self, alpha, K):
+    def __init__(self, alpha, K, dropout):
         super(APPNP_prop, self).__init__()
         self.alpha = alpha
         self.K = K
+        self.dropout = dropout
 
     def forward(self, x, adj):
         h = x
+        edge_list = adj._indices()
+        values = adj._values()
+        one_mat = torch.ones_like(values)
         for _ in range(self.K):
-            x = (1 - self.alpha) * torch.spmm(adj, x) + self.alpha * h
+            dropped_values = values * F.dropout(one_mat, p=self.dropout, training=self.training)
+            dropped_adj = torch.sparse.FloatTensor(edge_list, dropped_values)
+            x = (1 - self.alpha) * torch.spmm(dropped_adj, x) + self.alpha * h
         return x
 
 
