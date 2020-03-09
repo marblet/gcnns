@@ -41,38 +41,38 @@ def load_data(dataset_str, seed=None):
 def load_npz_data(dataset_str, seed):
     with np.load('data/npz/' + dataset_str + '.npz', allow_pickle=True) as loader:
         loader = dict(loader)
-        adj_mat = sp.csr_matrix((loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
-                                shape=loader['adj_shape']).tocoo()
-        if dataset_str[:2] == 'ms':
-            edge_list = torch.cat((torch.tensor(adj_mat.row).type(torch.int64).view(1, -1),
-                                   torch.tensor(adj_mat.col).type(torch.int64).view(1, -1)), dim=0)
-        else:
-            edge_list1 = torch.cat((torch.tensor(adj_mat.row).type(torch.int64).view(1, -1),
-                                    torch.tensor(adj_mat.col).type(torch.int64).view(1, -1)), dim=0)
-            edge_list2 = torch.cat((torch.tensor(adj_mat.col).type(torch.int64).view(1, -1),
-                                    torch.tensor(adj_mat.row).type(torch.int64).view(1, -1)), dim=0)
-            edge_list = torch.cat([edge_list1, edge_list2], dim=1)
+    adj_mat = sp.csr_matrix((loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
+                            shape=loader['adj_shape']).tocoo()
+    if dataset_str[:2] == 'ms':
+        edge_list = torch.cat((torch.tensor(adj_mat.row).type(torch.int64).view(1, -1),
+                               torch.tensor(adj_mat.col).type(torch.int64).view(1, -1)), dim=0)
+    else:
+        edge_list1 = torch.cat((torch.tensor(adj_mat.row).type(torch.int64).view(1, -1),
+                                torch.tensor(adj_mat.col).type(torch.int64).view(1, -1)), dim=0)
+        edge_list2 = torch.cat((torch.tensor(adj_mat.col).type(torch.int64).view(1, -1),
+                                torch.tensor(adj_mat.row).type(torch.int64).view(1, -1)), dim=0)
+        edge_list = torch.cat([edge_list1, edge_list2], dim=1)
 
-        edge_list = add_self_loops(edge_list, loader['adj_shape'][0])
-        adj = normalize_adj(edge_list)
-        if 'attr_data' in loader:
-            feature_mat = sp.csr_matrix((loader['attr_data'], loader['attr_indices'], loader['attr_indptr']),
-                                        shape=loader['attr_shape']).todense()
-        elif 'attr_matrix' in loader:
-            feature_mat = loader['attr_matrix']
-        else:
-            feature_mat = None
-        features = torch.tensor(feature_mat)
+    edge_list = add_self_loops(edge_list, loader['adj_shape'][0])
+    adj = normalize_adj(edge_list)
+    if 'attr_data' in loader:
+        feature_mat = sp.csr_matrix((loader['attr_data'], loader['attr_indices'], loader['attr_indptr']),
+                                    shape=loader['attr_shape']).todense()
+    elif 'attr_matrix' in loader:
+        feature_mat = loader['attr_matrix']
+    else:
+        feature_mat = None
+    features = torch.tensor(feature_mat)
 
-        if 'labels_data' in loader:
-            labels = sp.csr_matrix((loader['labels_data'], loader['labels_indices'], loader['labels_indptr']),
-                                   shape=loader['labels_shape']).todense()
-        elif 'labels' in loader:
-            labels = loader['labels']
-        else:
-            labels = None
-        labels = torch.tensor(labels).long()
-        train_mask, val_mask, test_mask = split_data(labels, 20, 500, seed)
+    if 'labels_data' in loader:
+        labels = sp.csr_matrix((loader['labels_data'], loader['labels_indices'], loader['labels_indptr']),
+                               shape=loader['labels_shape']).todense()
+    elif 'labels' in loader:
+        labels = loader['labels']
+    else:
+        labels = None
+    labels = torch.tensor(labels).long()
+    train_mask, val_mask, test_mask = split_data(labels, 20, 500, seed)
 
     data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
 
