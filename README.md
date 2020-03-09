@@ -1,5 +1,6 @@
 The implementations of Graph Convolutional Neural Networks.
 
+## Models
 ### GCN
 - [Semi-Supervised Classification with Graph Convolutional Networks](https://arxiv.org/abs/1609.02907)
 - Thomas N. Kipf, Max Welling
@@ -19,3 +20,13 @@ The implementations of Graph Convolutional Neural Networks.
 - [Masked Graph Convolutional Network](https://www.ijcai.org/Proceedings/2019/565)
 - Liang Yang, Fan Wu, Yingkui Wang, Junhua Gu, Yuanfang Guo
 - IJCAI 2019
+
+## Datasets
+- Cora, Citeseer, Pubmed
+  - from [planetoid](https://github.com/kimiyoung/planetoid)
+- MS_Academics_CS, MS_Academics_Phy
+  - from [gnn-benchmark](https://github.com/shchur/gnn-benchmark)
+- Amazon_Electronics_Computers, Amazon_Electronics_Photo
+  - from [gnn-benchmark](https://github.com/shchur/gnn-benchmark)
+- Chameleon, Cornell, Firm, Squirrel, Texas, Wisconsin
+  - from [geom-gcn](https://github.com/graphdml-uiuc-jlu/geom-gcn)
