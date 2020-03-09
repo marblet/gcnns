@@ -16,6 +16,11 @@ The implementations of Graph Convolutional Neural Networks.
 - Johannes Klicpera, Aleksandar Bojchevski, Stephan Günnemann
 - ICLR 2019
 
+### SGC
+- [Simplifying Graph Convolutional Networks](https://arxiv.org/abs/1902.07153)
+- Felix Wu, Tianyi Zhang, Amauri Holanda de Souza Jr., Christopher Fifty, Tao Yu, Kilian Q. Weinberger
+- ICML 2019
+
 ### Masked GCN
 - [Masked Graph Convolutional Network](https://www.ijcai.org/Proceedings/2019/565)
 - Liang Yang, Fan Wu, Yingkui Wang, Junhua Gu, Yuanfang Guo
