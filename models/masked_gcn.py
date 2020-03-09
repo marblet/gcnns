@@ -67,7 +67,7 @@ class MaskedGCNConv(Module):
         return x
 
 
-def create_masked_gcn_model(data, nhid=16, dropout=0.5, lr=0.01, weight_decay=5e-4):
+def create_masked_gcn_model(data, nhid=32, dropout=0.7, lr=0.001, weight_decay=3e-4):
     model = MaskedGCN(data, nhid, dropout)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer
