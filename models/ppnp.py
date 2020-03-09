@@ -32,11 +32,12 @@ class PPNP(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = self.fc2(x)
-        x = torch.matmul(self.prop_adj, x)
+        prop_mat = F.dropout(self.prop_adj, p=self.dropout, training=self.training)
+        x = torch.matmul(prop_mat, x)
         return F.log_softmax(x, dim=1)
 
 
-def create_ppnp_model(data, nhid=64, dropout=0.5, alpha=0.1, lr=0.01, weight_decay=0.005):
+def create_ppnp_model(data, nhid=64, dropout=0.5, alpha=0.1, lr=0.01, weight_decay=0.001):
     model = PPNP(data, nhid, dropout, alpha)
     optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     return model, optimizer

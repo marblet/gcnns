@@ -11,7 +11,7 @@ The implementations of Graph Convolutional Neural Networks.
 - Petar Veličković, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, Yoshua Bengio
 - ICLR 2018
 
-### APPNP
+### APPNP, PPNP
 - [Predict then Propagate: Graph Neural Networks meet Personalized PageRank](https://arxiv.org/abs/1810.05997)
 - Johannes Klicpera, Aleksandar Bojchevski, Stephan Günnemann
 - ICLR 2019
