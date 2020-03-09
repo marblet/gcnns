@@ -33,6 +33,8 @@ class Data(object):
 def load_data(dataset_str, ntrain=20, seed=None):
     if dataset_str in ['cora', 'citeseer', 'pubmed']:
         data = load_planetoid_data(dataset_str)
+    elif dataset_str in ['chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin']:
+        data = load_geom_data(dataset_str, ntrain, seed)
     else:
         data = load_npz_data(dataset_str, ntrain, seed)
     return data
@@ -123,6 +125,40 @@ def load_npz_data(dataset_str, ntrain, seed):
         labels = None
     labels = torch.tensor(labels).long()
     train_mask, val_mask, test_mask = split_data(labels, ntrain, 500, seed)
+
+    data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
+    return data
+
+
+def load_geom_data(dataset_str, ntrain, seed):
+    # Feature and Label preprocessing
+    with open('data/geom_data/{}/out1_node_feature_label.txt'.format(dataset_str)) as f:
+        feature_labels = f.readlines()
+    feat_list = []
+    label_list = []
+    for fl in feature_labels[1:]:
+        id, feat, lab = fl.split('\t')
+        feat = list(map(int, feat.split(',')))
+        feat_list.append(feat)
+        label_list.append(int(lab))
+    features = torch.FloatTensor(feat_list)
+    labels = torch.tensor(label_list).long()
+
+    # Graph preprocessing
+    with open('data/geom_data/{}/out1_graph_edges.txt'.format(dataset_str)) as f:
+        edges = f.readlines()
+    edge_pairs = []
+    G = nx.Graph()
+    for e in edges[1:]:
+        u, v = map(int, e.split('\t'))
+        edge_pairs.append((u, v))
+    G.add_edges_from(edge_pairs)
+    coo_adj = nx.to_scipy_sparse_matrix(G).tocoo()
+    edge_list = torch.from_numpy(np.vstack((coo_adj.row, coo_adj.col)).astype(np.int64))
+    edge_list = add_self_loops(edge_list, features.size(0))
+    adj = normalize_adj(edge_list)
+
+    train_mask, val_mask, test_mask = split_data(labels, ntrain, ntrain * 5, seed)
 
     data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
     return data
