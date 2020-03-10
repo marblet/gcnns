@@ -32,6 +32,23 @@ class GAT(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
+def sp_softmax(indices, values, N):
+    source, _ = indices
+    v_max = values.max()
+    exp_v = torch.exp(values - v_max)
+    exp_sum = torch.zeros(N, 1)
+    exp_sum.scatter_add_(0, source.unsqueeze(1), exp_v)
+    softmax_v = exp_v / exp_sum[source]
+    return softmax_v
+
+
+def sp_matmul(indices, values, mat):
+    source, target = indices
+    out = torch.zeros_like(mat)
+    out.scatter_add_(0, source.expand(mat.size(1), -1).t(), values * mat[target])
+    return out
+
+
 class GATConv(nn.Module):
     def __init__(self, in_features, out_features, dropout, alpha, bias=True):
         super(GATConv, self).__init__()
@@ -61,14 +78,11 @@ class GATConv(nn.Module):
         source, target = edge_list
         a_input = torch.cat([h[source], h[target]], dim=1)
         e = F.leaky_relu(torch.matmul(a_input, self.a), negative_slope=self.alpha)
+        attention = sp_softmax(edge_list, e, h.size(0))
 
-        N = h.size(0)
-        attention = -1e20*torch.ones([N, N], device=device, requires_grad=True)
-        attention[source, target] = e[:, 0]
-        attention = F.softmax(attention, dim=1)
         attention = F.dropout(attention, self.dropout, training=self.training)
         h = F.dropout(h, self.dropout, training=self.training)
-        h_prime = torch.matmul(attention, h)
+        h_prime = sp_matmul(edge_list, attention, h)
         if self.bias is not None:
             h_prime = h_prime + self.bias
 
