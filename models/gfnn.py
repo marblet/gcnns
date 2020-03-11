@@ -29,7 +29,6 @@ class GFNN(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def create_gfnn_model(data, nhid=32, dropout=0.5, lr=0.1, weight_decay=3e-5):
+def create_gfnn_model(data, nhid=32, dropout=0.5):
     model = GFNN(data, nhid, dropout)
-    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    return model, optimizer
+    return model

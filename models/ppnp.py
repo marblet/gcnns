@@ -37,7 +37,6 @@ class PPNP(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def create_ppnp_model(data, nhid=64, dropout=0.5, alpha=0.1, lr=0.01, weight_decay=0.001):
+def create_ppnp_model(data, nhid=64, dropout=0.5, alpha=0.1):
     model = PPNP(data, nhid, dropout, alpha)
-    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    return model, optimizer
+    return model

@@ -24,7 +24,6 @@ class SGC(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def create_sgc_model(data, lr=0.2, weight_decay=3e-5):
+def create_sgc_model(data):
     model = SGC(data)
-    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    return model, optimizer
+    return model

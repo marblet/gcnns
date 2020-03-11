@@ -48,7 +48,6 @@ class APPNP_prop(nn.Module):
         return x
 
 
-def create_appnp_model(data, nhid=64, dropout=0.5, alpha=0.1, K=10, lr=0.01, weight_decay=5e-4):
+def create_appnp_model(data, nhid=64, dropout=0.5, alpha=0.1, K=10):
     model = APPNP(data, nhid, dropout, alpha, K)
-    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    return model, optimizer
+    return model

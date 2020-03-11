@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torch.optim import Adam
 from copy import deepcopy
 from numpy import mean, std
 from tqdm import tqdm
@@ -91,7 +92,7 @@ def evaluate(model, data):
     return outputs
 
 
-def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, patience=10,
+def run(data, model, lr, weight_decay, epochs=200, niter=100, early_stopping=True, patience=10,
         use_loss=True, use_acc=False, save_model=False, verbose=False):
     # for GPU
     data.to(device)
@@ -101,6 +102,7 @@ def run(data, model, optimizer, epochs=200, niter=100, early_stopping=True, pati
 
     for _ in tqdm(range(niter)):
         model.to(device).reset_parameters()
+        optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         if torch.cuda.is_available():
             torch.cuda.synchronize()
 
