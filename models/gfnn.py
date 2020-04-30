@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class GFNN(nn.Module):
-    def __init__(self, data, nhid, dropout, K=2):
+    def __init__(self, data, nhid=32, dropout=0.5, K=2):
         super(GFNN, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
         self.fc1 = nn.Linear(nfeat, nhid)
@@ -26,8 +26,3 @@ class GFNN(nn.Module):
         x = self.prelu(x)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
-
-
-def create_gfnn_model(data, nhid=32, dropout=0.5):
-    model = GFNN(data, nhid, dropout)
-    return model

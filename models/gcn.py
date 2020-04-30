@@ -5,7 +5,7 @@ from torch.nn.modules.module import Module
 
 
 class GCN(nn.Module):
-    def __init__(self, data, nhid, dropout):
+    def __init__(self, data, nhid=16, dropout=0.5):
         super(GCN, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = GCNConv(nfeat, nhid)
@@ -49,8 +49,3 @@ class GCNConv(Module):
         if self.bias is not None:
             x += self.bias
         return x
-
-
-def create_gcn_model(data, nhid=16, dropout=0.5):
-    model = GCN(data, nhid, dropout)
-    return model

@@ -6,12 +6,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class APPNP(nn.Module):
-    def __init__(self, data, nhid, dropout, alpha, K):
+    def __init__(self, data, nhid=64, dropout=0.5, alpha=0.1, K=10):
         super(APPNP, self).__init__()
         self.fc1 = nn.Linear(data.num_features, nhid)
         self.fc2 = nn.Linear(nhid, data.num_classes)
         self.dropout = dropout
-        self.prop = APPNP_prop(alpha, K, dropout)
+        self.prop = APPNPprop(alpha, K, dropout)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -28,9 +28,9 @@ class APPNP(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-class APPNP_prop(nn.Module):
+class APPNPprop(nn.Module):
     def __init__(self, alpha, K, dropout):
-        super(APPNP_prop, self).__init__()
+        super(APPNPprop, self).__init__()
         self.alpha = alpha
         self.K = K
         self.dropout = dropout
@@ -45,8 +45,3 @@ class APPNP_prop(nn.Module):
             dropped_adj = torch.sparse.FloatTensor(edge_list, dropped_values)
             x = (1 - self.alpha) * torch.spmm(dropped_adj, x) + self.alpha * h
         return x
-
-
-def create_appnp_model(data, nhid=64, dropout=0.5, alpha=0.1, K=10):
-    model = APPNP(data, nhid, dropout, alpha, K)
-    return model

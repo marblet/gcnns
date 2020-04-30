@@ -21,8 +21,3 @@ class SGC(nn.Module):
     def forward(self, data):
         x = self.fc(self.processed_x)
         return F.log_softmax(x, dim=1)
-
-
-def create_sgc_model(data):
-    model = SGC(data)
-    return model

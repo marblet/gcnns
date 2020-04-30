@@ -21,7 +21,7 @@ def make_mask(x, edge_list, dense_adj, sigma, deg):
 
 
 class MaskedGCN(nn.Module):
-    def __init__(self, data, nhid, dropout):
+    def __init__(self, data, nhid=32, dropout=0.7):
         super(MaskedGCN, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
         self.gc1 = MaskedGCNConv(nfeat, nhid, data)
@@ -64,8 +64,3 @@ class MaskedGCNConv(Module):
         x = self.fc(x)
         x = torch.spmm(data.adj, x)
         return x
-
-
-def create_masked_gcn_model(data, nhid=32, dropout=0.7):
-    model = MaskedGCN(data, nhid, dropout)
-    return model

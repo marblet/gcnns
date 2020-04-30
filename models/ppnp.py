@@ -13,7 +13,7 @@ def calc_ppr_exact(adj, alpha):
 
 
 class PPNP(nn.Module):
-    def __init__(self, data, nhid, dropout, alpha):
+    def __init__(self, data, nhid=64, dropout=0.5, alpha=0.1):
         super(PPNP, self).__init__()
         self.fc1 = nn.Linear(data.num_features, nhid)
         self.fc2 = nn.Linear(nhid, data.num_classes)
@@ -34,8 +34,3 @@ class PPNP(nn.Module):
         prop_mat = F.dropout(self.prop_adj, p=self.dropout, training=self.training)
         x = torch.matmul(prop_mat, x)
         return F.log_softmax(x, dim=1)
-
-
-def create_ppnp_model(data, nhid=64, dropout=0.5, alpha=0.1):
-    model = PPNP(data, nhid, dropout, alpha)
-    return model

@@ -7,7 +7,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class MixHop(nn.Module):
-    def __init__(self, data, nhid, dropout):
+    def __init__(self, data, nhid=16, dropout=0.5):
         super(MixHop, self).__init__()
         nfeat, nclass = data.num_features, data.num_classes
         self.gcs1 = [MixHopConv(nfeat, nhid, data, hop=i) for i in range(0, 3)]
@@ -58,8 +58,3 @@ class MixHopConv(Module):
         x = self.fc(x)
         x = torch.spmm(self.adj, x)
         return x
-
-
-def create_mixhop_model(data, nhid=16, dropout=0.5):
-    model = MixHop(data, nhid, dropout)
-    return model
