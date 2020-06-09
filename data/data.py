@@ -33,6 +33,8 @@ class Data(object):
 def load_data(dataset_str, ntrain=20, seed=None):
     if dataset_str in ['cora', 'citeseer', 'pubmed']:
         data = load_planetoid_data(dataset_str)
+    elif dataset_str == "wiki":
+        data = load_wiki_data(ntrain, seed)
     elif dataset_str in ['chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin']:
         data = load_geom_data(dataset_str, ntrain, seed)
     else:
@@ -87,6 +89,28 @@ def load_planetoid_data(dataset_str):
 
     data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
 
+    return data
+
+
+def load_wiki_data(ntrain, seed):
+    # generate feature matrix
+    sp_feat = torch.tensor(np.loadtxt('data/wiki/tfidf.txt')).t()
+    indices = sp_feat[:2].long()
+    values = sp_feat[2].float()
+    features = torch.sparse.FloatTensor(indices, values).to_dense()
+
+    # generate edge list and adj matrix
+    edge_list = torch.tensor(np.loadtxt('data/wiki/graph.txt')).long().t()
+    edge_list_rev = torch.stack([edge_list[1], edge_list[0]])
+    edge_list = torch.cat([edge_list, edge_list_rev], dim=1)
+    edge_list = add_self_loops(edge_list, int(edge_list.max() + 1))
+    adj = normalize_adj(edge_list)
+
+    # generate labels and masks
+    labels = torch.tensor(np.loadtxt('data/wiki/group.txt')).long().t()[1] - 1
+    train_mask, val_mask, test_mask = split_data(labels, ntrain, 500, seed)
+
+    data = Data(adj, edge_list, features, labels, train_mask, val_mask, test_mask)
     return data
 
 
