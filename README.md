@@ -21,11 +21,6 @@ The implementations of Graph Convolutional Neural Networks.
 - Felix Wu, Tianyi Zhang, Amauri Holanda de Souza Jr., Christopher Fifty, Tao Yu, Kilian Q. Weinberger
 - ICML 2019
 
-### Masked GCN
-- [Masked Graph Convolutional Network](https://www.ijcai.org/Proceedings/2019/565)
-- Liang Yang, Fan Wu, Yingkui Wang, Junhua Gu, Yuanfang Guo
-- IJCAI 2019
-
 ## Datasets
 - Cora, Citeseer, Pubmed
   - from [planetoid](https://github.com/kimiyoung/planetoid)
