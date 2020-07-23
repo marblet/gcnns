@@ -61,7 +61,11 @@ class MaskedGCNSym(nn.Module):
 class MaskedGCNAsym(MaskedGCNSym):
     def __init__(self, data, dropout=0.5):
         super(MaskedGCNAsym, self).__init__(data, dropout)
-        self.b = nn.Parameter(torch.FloatTensor(2 * data.num_features))
+        self.b = nn.Parameter(torch.FloatTensor(1, 2 * data.num_features))
+
+    def reset_parameters(self):
+        super().reset_parameters()
+        nn.init.xavier_uniform_(self.b.data)
 
     def calc_edge_weight(self, x, edge_list):
         source, target = edge_list
