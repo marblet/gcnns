@@ -14,12 +14,12 @@ class MaskedGCNSym(nn.Module):
         self.fc = nn.Linear(data.num_features, data.num_classes, bias=False)
         self.degree = get_degree(data.edge_list).float().to(device)
         self.dense_adj = data.adj.to_dense().to(device)
-        self.sigma = Parameter(torch.FloatTensor(data.num_features))
+        self.logvar = Parameter(torch.FloatTensor(data.num_features))
         self.dropout = dropout
 
     def reset_parameters(self):
         self.fc.reset_parameters()
-        self.sigma.data = torch.ones_like(self.sigma) * 100
+        self.logvar.data = torch.zeros_like(self.logvar)
 
     def calc_edge_weight(self, x, edge_list):
         deg = get_degree(edge_list)
@@ -40,7 +40,7 @@ class MaskedGCNSym(nn.Module):
         diff = edge_weight.unsqueeze(1) * diff
         mask = torch.zeros(x.size(), device=device)
         mask.index_add_(0, source, diff)
-        mask = mask / (self.sigma * self.sigma)
+        mask = mask / torch.exp(self.logvar)
         mask = torch.exp(- mask / self.degree.unsqueeze(1))
         return mask
 
