@@ -22,10 +22,16 @@ class MaskedGCNSym(nn.Module):
         self.sigma.data = torch.ones_like(self.sigma) * 100
 
     def calc_edge_weight(self, x, edge_list):
-        source, target = edge_list
-        diff = torch.pow((x[source] - x[target]), 2)
-        diff = diff / (self.sigma * self.sigma)
-        edge_weight = torch.exp(- torch.sum(diff, dim=1))
+        deg = get_degree(edge_list)
+        row, col = edge_list
+        deg_inv_sqrt = torch.pow(deg.to(torch.float), -0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0.0
+        weight = torch.ones(edge_list.size(1))
+        edge_weight = deg_inv_sqrt[row] * weight * deg_inv_sqrt[col]
+        # source, target = edge_list
+        # diff = torch.pow((x[source] - x[target]), 2)
+        # diff = diff / (self.sigma * self.sigma)
+        # edge_weight = torch.exp(- torch.sum(diff, dim=1))
         return edge_weight
 
     def generate_mask(self, x, edge_list, edge_weight):
